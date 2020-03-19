@@ -32,6 +32,7 @@ target = 0;
 if numel(varargin)==1
     target = varargin{1};
 end
+num_sess = numel(SM);
 %%
 %Load spatial and temporal component of SVD
 % U: Spatial component from all trials
@@ -42,7 +43,7 @@ end
 % trial_info: structure containing information about session
 
 cd(path_load_data)
-for sess=1:numel(SM)
+for sess=1:num_sess
     
     load(strcat(SM{sess},'SVD_Compression.mat'),'U','SV','U_empty','SV_empty','Masks','trial_info')
     
@@ -63,7 +64,19 @@ SV=SVall;
 if target==0
     %Chose the target session based on the alignment of empty trials
     %Choose the session that have small displacement from other sessiosn
-    [Ue_reg,target,Shift]=RegMultipleU(Ue,Ma{1}.roi_mask);
+    u=[];
+    for i=1:num_sess
+        tmp=U{i}(:,:,1);
+        tmp(~mask)=mean(tmp(:));
+        u(:,:,i)=tmp;
+    end
+    for i=1:num_sess
+        for j=setdiff(1:num_sess,i)
+            [~,shift]=dftreg_real(u(:,:,i),u(:,:,j));
+            pairwise_error(i,j)=shift.error;
+        end
+    end
+    [~,target]=min(sum(pairwise_error));
     sprintf('Target calculated from emtpy trials, determined to session %d',target)
 else
     sprintf('Target given, session %d', target)
@@ -75,7 +88,7 @@ h=140;
 w=100;
 mask_L=false(256);mask_L(128-h/2:128+h/2-1,midline-w:midline-1)=true;
 mask_R=false(256);mask_R(128-h/2:128+h/2-1,midline+1:midline+w)=true;
-num_sess=numel(SM);
+
 %Perform all pairwise alignment between session pairs.
 %Perform separate reigstration using each of 4 reference odors to calculate
 %amount of shift between each pair
@@ -144,7 +157,7 @@ for i=1:num_sess
 end
 
 % Register spatial components
-for sess=setdiff(1:numel(SM),target)
+for sess=setdiff(1:num_sess,target)
     for s=1:size(Uall{1},3)
         tmp=Uall{sess}(:,:,s);
         tmp(~mask)=mean(tmp(:));
@@ -164,7 +177,7 @@ Ureg{target}=Uall{target};
 %Create tiff stack to check if reference stimuli are correctly aligned
 %The first half of frames in the stack is after registration. The second
 %half is before registration
-for sess=1:numel(SM)
+for sess=1:num_sess
     for rs=1:4
         s1=TrialInfo{sess}.stim_num;
         
@@ -175,8 +188,8 @@ for sess=1:numel(SM)
         im1=reshape(reshape(Ureg{sess}(:,:,3:end),256^2,[])*mean(SV{sess}(frame_mask1,3:end))',256,256);
         im2=reshape(reshape(Uall{sess}(:,:,3:end),256^2,[])*mean(SV{sess}(frame_mask1,3:end))',256,256);
         
-        img_stack(:,:,sess+numel(SM)*(rs-1))=imadjust(mat2gray(im1));
-        img_stack(:,:,4*numel(SM)+sess+numel(SM)*(rs-1))=imadjust(mat2gray(im2));
+        img_stack(:,:,sess+num_sess*(rs-1))=imadjust(mat2gray(im1));
+        img_stack(:,:,4*num_sess+sess+num_sess*(rs-1))=imadjust(mat2gray(im2));
     end
 end
 
@@ -189,7 +202,7 @@ cd(path_home)
 
 k=1;
 img_stack2=[];
-for sess=1:numel(SM)
+for sess=1:num_sess
     str=strsplit(TrialInfo{sess}.tsm_name,'_');
     if contains(str{3},'100hz')
         odt1=str{4}; odt2=str{5};
@@ -258,7 +271,7 @@ for sess=1:numel(SM)
         end
     end
     
-    %visualize spatial components of SVD
+    %codes to include spatial components of SVD into tiffstack
     %SVD spatial components are not very informative for segmentation.
     %So, commented out so far.
     %     for s=3:6
