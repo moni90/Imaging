@@ -1,4 +1,4 @@
-function [U,SV]=splitSVD(frames,trial_info,mask,varargin)
+function [U,SV]=splitSVD(frames,trial_info,fov_mask,varargin)
 %This function is to conduct SVD cleaning to video frames
 %Based on
 % Spontaneous behaviors drive multidimensional, brain-wide neural activity
@@ -83,7 +83,7 @@ for i=1:num_block
     %Remove unread trials from svd
     subF=subF(:,frames_read(1+trials(i)*fnum:trials(i+1)*fnum));
     subF=subF(:,(max(subF)-min(subF))~=0);%Remove all 0 frames which correspond to skipped trials
-    subF=subF(mask(:),:);
+    subF=subF(fov_mask(:),:);
     [Ub,Sb,~] = svd(subF,'econ');
     G{i}=Ub(:,1:num_svals)*Sb(1:num_svals,1:num_svals);
     sprintf('svd for block %d /%d = %.2f sec',i,num_block,toc)
@@ -94,9 +94,9 @@ clear subF
 G_all=cell2mat(G);
 
 [U,~,~] = svd(G_all,'econ');
-SV=single(frames(mask(:),:))'*U;
+SV=single(frames(fov_mask(:),:))'*U;
 
-U=U(:,1:num_svals);U=roimask2full(U,mask);
+U=U(:,1:num_svals);U=roimask2full(U,fov_mask);
 SV=SV(:,1:num_svals);
 
 %U(:,1):black pigment,
@@ -117,7 +117,7 @@ if fig_plot==1
     for i=1:20
         subplot(4,5,i)
         g1=U(:,:,i);
-        g1(~mask)=mean(g1(mask));
+        g1(~fov_mask)=mean(g1(fov_mask));
         imshow(mat2gray(g1));title(num2str(i))
     end
 end
