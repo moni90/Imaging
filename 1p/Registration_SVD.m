@@ -1,38 +1,53 @@
-
-
-function Registration_SVD(SM,fname,varargin)
-%modified from
-% Registration_Segmentation_SVD_021519.m
-% Registration_Segmentation_SVD_110518.m
-%Do registration only without segementation. Segmentation will be done
-%manually.
+function [U, SV, TrialInfo, reg_params] = Registration_SVD(SessNames,fname,opt)
+% This function perform registration of imaging data taken at different sessions
 %
-%Hirofumi Nakayama 2020
+% Inputs
+%     SessNames: cell array containing name of sessions
+%     fname: header of data file names to be saved
+%     varargin{1}:taret (index of target session). If not given, target is
+%     determined based on the alignemnt of blank trials
+%
+% Output
+%     U: cell array containing registered U
+%     SV: cell array containing registered S*V
+%     TrialInfo: Cell array containing trial information
+%     reg_params: structure containing parameters of rgistration
+%
+% Hirofumi Nakayama 2020
 
-%Inputs
-%SM: cell array containing name of sessions
-%fname: header of data file names to be saved
-%varargin{1}:taret (index of target session). If not given, target is
-%determined based on the alignemnt of blank trials
-
-sn='Registration_SVD.m';
-direct=configPath();
-
-%folder path for loading or saving data
-path_load_data=direct.local;
-path_save_tiff=fullfile(direct.home,'SummaryImages','tiff');
-path_save_mat={direct.local,direct.rinberg_data};
-path_home = direct.home;
 %%
-% Check session names using sortSessions.m
-% [Sess,SessMouse]=sortSessions();
-
-midline = 128;
-target = 0;
-if numel(varargin)==1
-    target = varargin{1};
+% set parameters
+target = 0; %session id that is used as the target for alignment
+midline = 128; %x position of midline blood vessel
+if exist('opt','var')
+    if isfield(opt,'target')
+        target = opt.target;
+    end
+    
+    if isfield(opt, 'script_name')
+        script_name = opt.script_name;
+    end
+    
+    if isfield(opt, 'midline')
+       midline = opt.midline; 
+    end
 end
-num_sess = numel(SM);
+
+%setup path
+try
+    direct=configPath();
+    path_load_data=direct.local;
+    path_save_tiff=fullfile(direct.home,'SummaryImages','tiff');
+    path_save_mat={direct.local,direct.rinberg_data};
+    path_home = direct.home;
+catch
+    path_load_data = pwd;
+    path_home = pwd;
+    path_save_tiff = pwd;
+    path_save_mat = pwd;
+end
+
+num_sess = numel(SessNames);
 %%
 %Load spatial and temporal component of SVD
 % U: Spatial component from all trials
@@ -45,7 +60,7 @@ num_sess = numel(SM);
 cd(path_load_data)
 for sess=1:num_sess
     
-    load(strcat(SM{sess},'SVD_Compression.mat'),'U','SV','U_empty','SV_empty','Masks','trial_info')
+    load(strcat(SessNames{sess},'SVD_Compression.mat'),'U','SV','U_empty','SV_empty','Masks','trial_info')
     
     Uall{sess}=U;
     SVall{sess}=SV;
@@ -54,7 +69,11 @@ for sess=1:num_sess
     TrialInfo{sess}=trial_info;
 end
 cd(path_home)
+
+%Mask for field of view
+%circle with radius = 125 pixels in RedShirt NeuroCCD
 mask=Ma{1}.roi_mask;
+
 clear U SV
 SV=SVall;
 %%
@@ -66,7 +85,7 @@ if target==0
     %Choose the session that have small displacement from other sessiosn
     u=[];
     for i=1:num_sess
-        tmp=U{i}(:,:,1);
+        tmp=Uall{i}(:,:,1);
         tmp(~mask)=mean(tmp(:));
         u(:,:,i)=tmp;
     end
@@ -177,6 +196,7 @@ Ureg{target}=Uall{target};
 %Create tiff stack to check if reference stimuli are correctly aligned
 %The first half of frames in the stack is after registration. The second
 %half is before registration
+
 for sess=1:num_sess
     for rs=1:4
         s1=TrialInfo{sess}.stim_num;
@@ -188,14 +208,26 @@ for sess=1:num_sess
         im1=reshape(reshape(Ureg{sess}(:,:,3:end),256^2,[])*mean(SV{sess}(frame_mask1,3:end))',256,256);
         im2=reshape(reshape(Uall{sess}(:,:,3:end),256^2,[])*mean(SV{sess}(frame_mask1,3:end))',256,256);
         
-        img_stack(:,:,sess+num_sess*(rs-1))=imadjust(mat2gray(im1));
-        img_stack(:,:,4*num_sess+sess+num_sess*(rs-1))=imadjust(mat2gray(im2));
+
+        str1 = sprintf('sess%d_ref%d_after',sess,rs);
+        str2 = sprintf('sess%d_ref%d_before',sess,rs);
+        img1 = imadjust(mat2gray(im1));img1=rgb2gray(insertText(img1,[1,1],str1));
+        img2 = imadjust(mat2gray(im2));img2=rgb2gray(insertText(img2,[1,1],str2));
+
+            obj1 = imshow(img1);
+                    img_stack(:,:,sess+num_sess*(rs-1)) = obj1.CData;
+            
+            obj2 = imshow(img2);
+                    img_stack(:,:,4*num_sess+sess+num_sess*(rs-1)) =  obj2.CData;
+
+
     end
 end
 
 cd(path_save_tiff)
 save_tiffstack(img_stack,strcat(fname,'_RefOdors_before_vs_afterRegistration'));
 cd(path_home)
+
 %%
 %creat tiff stack for manual segmenataion
 %Use all odors at multiple timepoints
@@ -213,7 +245,6 @@ for sess=1:num_sess
     if TrialInfo{sess}.num_cond==19
         %dilution
         stim_used=[5,10,15];
-        
         stim_text=repmat({odt1},1,length(stim_used));
     elseif TrialInfo{sess}.num_cond==12
         %Morphing
@@ -243,12 +274,15 @@ for sess=1:num_sess
         stim_used=2:9;
         stim_text=cellfun(@(x) sprintf('%s_%s',x{1},x{2}),TrialInfo{sess}.OdorNames(stim_used),'UniformOutput',0);
     end
+    
+    
     s1=TrialInfo{sess}.stim_num;
     for s=1:length(stim_used)
-        
         for phase=1:4
-            %inhalation onset is frame 101
-            %frame_duration = 10ms
+%             frame index below is for following conditions.
+%                 inhalation onset is frame 101
+%                 frame_duration = 10ms
+%             Need to be modified for other imaging condition
             if phase==1
                 f_used=103:106;
             elseif phase==2
@@ -258,14 +292,14 @@ for sess=1:num_sess
             elseif phase==4
                 f_used=160:180;
             end
-            
+
             frame_mask1=repmat([f_used]',1,nnz(s1==stim_used(s)))+repmat([find(s1==stim_used(s))-1]*300,length(f_used),1);
             frame_mask1=frame_mask1(:);
+            
             im1=reshape(reshape(Ureg{sess}(:,:,3:end),256^2,[])*mean(SV{sess}(frame_mask1,3:end))',256,256);
             img=imadjust(mat2gray(im1));
             img=rgb2gray(insertText(img,[1,1],stim_text{s}));
             obj=imshow(img);
-            ffprintf('sess=%d,s=%d,phase=%d',sess,s,phase)
             img_stack2(:,:,k)=obj.CData;
             k=k+1;
         end
@@ -292,16 +326,15 @@ cd(path_home)
 U=Ureg(:);
 SV=SV(:);
 TrialInfo=TrialInfo(:);
-SM=SM(:);
-reg_params.target_sess = SM{target};
+SessNames=SessNames(:);
+reg_params.target_sess = SessNames{target};
 reg_params.target = target;
 reg_params.midline = midline;
-reg_params.sn = sn;
+reg_params.script_name = script_name;
 
 for p=1:numel(path_save_mat)
     cd(path_save_mat{p})
-    save(strcat(fname,'_SVD_registration.mat'),'U','SV','mask','TrialInfo','SM','reg_params','-v7.3')
+    save(strcat(fname,'_SVD_registration.mat'),'U','SV','mask','TrialInfo','SessNames','reg_params','-v7.3')
 end
 
-cd(path_home)
 end
