@@ -1,11 +1,11 @@
-function [dffmean,dffmean_es,dff,trial_info]=ReconstructionSVD_1p(U,SV,roi_vec,trial_info,opt)
+function [dffmean,dffmean_es,dff,trial_info]=ReconstructionSVD_1p(U,SV,roiMasks,trial_info,opt)
 % This function reconstruct df/f using SVD compressed data. Mostly used for
 % analyzing 1p imaging data.
 % Modified from ReconstructionSVD.m
-% 
+%
 % [dff_mean,dff_mean_es,dff,dff_img]=ReconstructionSVD_v2(U,SV,roi_vec,trial_info)
 % [dff_mean,dff_mean_es,dff,dff_img]=ReconstructionSVD_v2(U,SV,roi_vec,trial_info,opt)
-% 
+%
 % Input
 %     U: spatial component obtained by SVD of raw imaging data
 %     SV: product of singular value and temporal component obtained by SVD of
@@ -16,13 +16,13 @@ function [dffmean,dffmean_es,dff,trial_info]=ReconstructionSVD_1p(U,SV,roi_vec,t
 %     opt:parameters for reconstruction
 %     opt.pre     :time in ms included before inhalation onset
 %     opt.post    :time in ms included after inhalation onset
-%     parmas.trig    :vector of times in ms from inhalation onset. Used if dff is triggered by timings other than inhalation onset      
+%     parmas.trig    :vector of times in ms from inhalation onset. Used if dff is triggered by timings other than inhalation onset
 %     opt.base    :cell arrays containing of vectors representing timebins in
 %     ms from inhalation onset. Used if baseline for calculating dff is
 %     different from -20 to +20 ms of inhalation onset
 %     opt.sniffFilterUsed: true or false. true if sniff filter is used to
-%     record sniff. This will compensate for 10ms delay imposed by the filter ( default:true) 
-% 
+%     record sniff. This will compensate for 10ms delay imposed by the filter ( default:true)
+%
 % Output:
 %     dff_mean (roi x time x stimulus): trial averaged dff for each of odor
 %     dff_mean_es(roi x time x stimulus): dff_mean subtracted by dff of empty
@@ -32,20 +32,30 @@ function [dffmean,dffmean_es,dff,trial_info]=ReconstructionSVD_1p(U,SV,roi_vec,t
 %     dff_img: images of activated glomeruli at earlier timing from inahaltion
 %     onset.
 %     trial_info: updated trial_info, added trials_unread and dff_img
-% 
+%
 % Hirofumi Nakayama 2019
 
-
-img_size = sqrt(size(U,1));
+if ndims(U)==2
+%     U(pixel x svals);
+    img_size = sqrt(size(U,1));
+    u=U;
+elseif ndims(U)==3
+%     U(pixel x pixel x svals)
+    img_size = size(U,1);
+    u=reshape(U,img_size^2,[]);
+end
 
 stim_num=trial_info.stim_num;
 fpt=size(SV,1)/length(stim_num);
 
-u=reshape(U,img_size^2,[]);
-%roi_vec (pixels x glomeruli)
 
-roi_vec=roi_vec./sum(roi_vec);
-Ug=roi_vec'*u;
+
+%roiMasks (pixels x roi) or (pixels x pixels x roi)
+if ndims(roiMasks)==3
+    roiMasks = reshape(roiMasks,[],size(roiMasks,3));
+end
+roiMasks=roiMasks./sum(roiMasks);
+Ug=roiMasks'*u;
 
 usfac=10;bin=1/usfac;
 
@@ -79,11 +89,11 @@ if exist('opt','var')
 end
 
 if sniffFilterUsed
-   %In case sniff filter is used during aquisition. Filter will impose 10ms
-   %delay in recorded signal.
-   sniffOffset = 10; 
+    %In case sniff filter is used during aquisition. Filter will impose 10ms
+    %delay in recorded signal.
+    sniffOffset = 10;
 else
-   sniffOffset = 0;
+    sniffOffset = 0;
 end
 
 %Number of pre inhalation frames contained in data
@@ -133,7 +143,7 @@ for trial=1:length(ind_read)
     dff(:,:,tr)=((fg-mean(fg(base_period,:)))./mean(fg(base_period,:)))';%Use -20 to +20ms as baseline
     
     %Use 50 to 250ms to get good image of spatial patterns
-    dfi(:,:,tr)=(reshape((mean(sv(71:271,:)*u'))',img_size,img_size)-reshape((mean(sv(1:41,:)*u'))',img_size,img_size))./(reshape((mean(sv(1:41,:)*u'))',256,256));   
+    dfi(:,:,tr)=(reshape((mean(sv(71:271,:)*u'))',img_size,img_size)-reshape((mean(sv(1:41,:)*u'))',img_size,img_size))./(reshape((mean(sv(1:41,:)*u'))',256,256));
 end
 % trial_info.stim_num=trial_info.stim_num(ind_read);
 
