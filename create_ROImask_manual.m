@@ -1,52 +1,70 @@
-function [roiMask_id,roiMask_stack]=create_ROImask_manual(name,opt)
+function [roiMask_id,roiMask_stack]=create_ROImask_manual(roi_name,opt)
 %Function to create binary roi mask from RoiSet.zip files created in FIJI
 %ImageJ
 %Hirofumi Nakayama 2020
 
-%%
-%set up paths
+%% set up paths and parameters
+bmp = false;
 path_original = pwd;
+
+[filepath,fname,ext] = fileparts(roi_name);
+if isempty(ext)
+    roi_name = strcat(roi_name,'.zip');
+else
+    
+end
+
+str = strsplit(fname,'_');
+
 try
     directory=configPath();
-    path_imaging = directory.home_2p;
+    path_1p = directory.home;
+    path_2p = directory.home_2p;
+    if exist(fullfile(path_1p,'Segmentation\RoiSet',roi_name),'file')
+        path_imaging = path_1p;
+        img_size = 256;
+    elseif exist(fullfile(path_2p,'Segmentation\RoiSet',roi_name),'file')
+        path_imaging = path_2p;
+        img_size = 512;
+    elseif exist(fullfile(path_2p,'2P_data',str{1},str{2},'roiMasks',roi_name),'file')
+        path_imaging = path_2p;
+        img_size = 512;
+    else
+        error('%s not found', roi_name)
+    end
 catch
     path_imaging = pwd;
 end
 
-%set parameters
-bmp = false;
-img_size = 512;
-strROIArchiveFilename = name;
+if isempty(filepath)
+    if contains(roi_name,'RoiSet','IgnoreCase',true)
+        %If name of RoiSet is given
+        strROIArchiveFilename=fullfile(path_imaging,'Segmentation\RoiSet',roi_name);
+    else
+        %If name of image stack is given
+        strROIArchiveFilename=fullfile(path_imaging,'Segmentation\RoiSet',sprintf('%sRoiSet',roi_name));
+    end
+else
+    strROIArchiveFilename = roi_name;
+end
+
 if exist('opt','var')
     if isfield(opt,'bmp')
         bmp = opt.bmp;
     end
     
     if isfield(opt,'path')
-        if contains(name,'RoiSet','IgnoreCase',true)
+        if contains(roi_name,'RoiSet','IgnoreCase',true)
             %If name of RoiSet is given
-            strROIArchiveFilename=fullfile(opt.path,sprintf('%s.zip',name));
+            strROIArchiveFilename=fullfile(opt.path,roi_name);
         else
-            %If name of tiff stack is given
-            strROIArchiveFilename=fullfile(opt.path,sprintf('%sRoiSet.zip',name));
+            %If name of image stack is given
+            strROIArchiveFilename=fullfile(opt.path,sprintf('%sRoiSet',roi_name));
         end
-    else
-        if contains(name,'RoiSet','IgnoreCase',true)
-            %If name of RoiSet is given
-            strROIArchiveFilename=fullfile(path_imaging,'Segmentation\RoiSet',sprintf('%s.zip',name));
-        else
-            %If name of tiff stack is given
-            strROIArchiveFilename=fullfile(path_imaging,'Segmentation\RoiSet',sprintf('%sRoiSet.zip',name));
-        end
-    end
-    
-    if isfield(opt, 'img_size')
-        img_size = opt.img_size;
     end
 end
 
-%%
-%Read RoiSet.zip file
+%% Read RoiSet.zip file
 %sROI{i}.vnRectBounds=[Top,Left,Bottom,Right]
 [sROI] = ReadImageJROI(strROIArchiveFilename);
 
@@ -128,8 +146,7 @@ if bmp
     mkdir(new_folder)
     cd(new_folder)
     for i = 1:size(roiMask_stack,3)
-        imwrite(1-roiMask_stack(:,:,i),sprintf('%s_roi_bmp_%d.bmp',name,i),'bmp')
+        imwrite(1-roiMask_stack(:,:,i),sprintf('%s_roi_bmp_%d.bmp',roi_name,i),'bmp')
     end
+    cd(path_original)
 end
-
-cd(path_original)
