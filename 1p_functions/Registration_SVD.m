@@ -30,7 +30,7 @@ if exist('opt','var')
     end
     
     if isfield(opt, 'midline')
-       midline = opt.midline; 
+        midline = opt.midline;
     end
 end
 
@@ -209,19 +209,19 @@ for sess=1:num_sess
         im1=reshape(reshape(Ureg{sess}(:,:,3:end),256^2,[])*mean(SV{sess}(frame_mask1,3:end))',256,256);
         im2=reshape(reshape(Uall{sess}(:,:,3:end),256^2,[])*mean(SV{sess}(frame_mask1,3:end))',256,256);
         
-
+        
         str1 = sprintf('sess%d_ref%d_after',sess,rs);
         str2 = sprintf('sess%d_ref%d_before',sess,rs);
         img1 = imadjust(mat2gray(im1));img1=rgb2gray(insertText(img1,[1,1],str1));
         img2 = imadjust(mat2gray(im2));img2=rgb2gray(insertText(img2,[1,1],str2));
-
-            obj1 = imshow(img1);
-                    img_stack(:,:,sess+num_sess*(rs-1)) = obj1.CData;
-            
-            obj2 = imshow(img2);
-                    img_stack(:,:,4*num_sess+sess+num_sess*(rs-1)) =  obj2.CData;
-
-
+        
+        obj1 = imshow(img1);
+        img_stack(:,:,sess+num_sess*(rs-1)) = obj1.CData;
+        
+        obj2 = imshow(img2);
+        img_stack(:,:,4*num_sess+sess+num_sess*(rs-1)) =  obj2.CData;
+        
+        
     end
 end
 
@@ -280,10 +280,10 @@ for sess=1:num_sess
     s1=TrialInfo{sess}.stim_num;
     for s=1:length(stim_used)
         for phase=1:4
-%             frame index below is for following conditions.
-%                 inhalation onset is frame 101
-%                 frame_duration = 10ms
-%             Need to be modified for other imaging condition
+            %             frame index below is for following conditions.
+            %                 inhalation onset is frame 101
+            %                 frame_duration = 10ms
+            %             Need to be modified for other imaging condition
             if phase==1
                 f_used=103:106;
             elseif phase==2
@@ -293,7 +293,7 @@ for sess=1:num_sess
             elseif phase==4
                 f_used=160:180;
             end
-
+            
             frame_mask1=repmat([f_used]',1,nnz(s1==stim_used(s)))+repmat([find(s1==stim_used(s))-1]*300,length(f_used),1);
             frame_mask1=frame_mask1(:);
             
@@ -334,8 +334,12 @@ reg_params.midline = midline;
 reg_params.script_name = script_name;
 
 for p=1:numel(path_save_mat)
-    cd(path_save_mat{p})
-    save(strcat(fname,'_SVD_registration.mat'),'U','SV','mask','TrialInfo','SessNames','reg_params','-v7.3')
+    try
+        cd(path_save_mat{p})
+        save(strcat(fname,'_SVD_registration.mat'),'U','SV','mask','TrialInfo','SessNames','reg_params','-v7.3')
+    catch
+        sprintf('unable to save variables in %s',path_save_mat{p})
+    end
 end
 
 end
