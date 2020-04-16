@@ -19,6 +19,7 @@ function [U, SV, TrialInfo, reg_params] = Registration_SVD(SessNames,fname,opt)
 % set parameters
 target = 0; %session id that is used as the target for alignment
 midline = 128; %x position of midline blood vessel
+script_name='';
 if exist('opt','var')
     if isfield(opt,'target')
         target = opt.target;
