@@ -1,6 +1,6 @@
 function []=save_tiffstack(stack,title)
 %This function saves grayscale tiff stack of score_maps or glomMasks
-%Hirofumi Nakayama 2019
+%Hirofumi Nakayama 2019,,,,,
 
 if ndims(stack)==3
     imwrite(mat2gray(stack(:,:,1)),strcat(title,'.tiff'),'tiff')
