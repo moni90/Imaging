@@ -1,4 +1,4 @@
-function [Trialframes,trial_info]=readDataFiles_tsm_h5(tsm_name,h5_name,fps,varargin)
+function [Trialframes,trial_info]=readDataFiles_tsm_h5(tsm_name,h5_name,fps)
 %Modified from Load_DataFiles_tsm_h5.m
 
 %In case sniff warping is done, provide information about the first sniff
