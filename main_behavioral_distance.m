@@ -38,9 +38,12 @@ for id_folder = 3:length(folder_list)
     
     if id_folder == 3
         data_pooled = data;
+        distance_mat_avg = distance_mat_temp;
     else
         data_pooled = [data_pooled, data];
+        distance_mat_avg = distance_mat_avg+distance_mat_temp;
     end
+    
 end
 
 [p_no_go_matrix, distance_mat] = behavioral_distance_matrix(data_pooled);
@@ -48,5 +51,10 @@ figure;
 subplot(1,2,1);imagesc(p_no_go_matrix); title('P(no-go)'); colormap(gray); caxis([0, 1]); colorbar;
 subplot(1,2,2); imagesc(distance_mat); title('Behavioral distance'); colormap(gray); caxis([0, 1]); colorbar;
 
+distance_mat_avg = distance_mat_avg/(length(folder_list)-2);
+figure;
+subplot(1,2,1);imagesc(p_no_go_matrix); title('P(no-go)'); colormap(gray); caxis([0, 1]); colorbar;
+subplot(1,2,2); imagesc(distance_mat_avg); title('Behavioral distance'); colormap(gray); caxis([0, 1]); colorbar;
+
 save(fullfile(save_path, 'pooled_behavioral_data.mat'), 'data_pooled');
-save(fullfile(save_path, 'pooled_distance_matrix.mat'), 'p_no_go_matrix', 'distance_mat');
+save(fullfile(save_path, 'pooled_distance_matrix.mat'), 'p_no_go_matrix', 'distance_mat', 'distance_mat_avg');
