@@ -1,6 +1,6 @@
 function [distance_glob, distance_rel, distance_stm] = compute_avg_neural_distance(...
-    Lat, trials_pair, id_keep_mouse, id_keep_conc_level, id_keep_trials, ...
-    t_a, t_p, t_g, teta, b_g, b_r, t0, frame_period, time)
+    Lat, trials_pair, id_keep_mouse, id_keep_conc_level, id_keep_trials, align_mode, ...
+    t_a, t_p, t_g, teta, b_g, b_r, b_0, t0, frame_period, time)
 
 n_mouse = length(id_keep_mouse);
 n_conc_level = length(id_keep_conc_level);
@@ -25,8 +25,8 @@ for i_mouse = 1:n_mouse %iterate over mice
             pattern_1 = this_lat(:,id1_odor+1);
             pattern_2 = this_lat(:,id2_odor+1);
             
-            [dist_glob, dist_rel, dist_stm] = compute_neural_distance_single_pair(pattern_1, pattern_2,...
-                t_a, t_p, t_g, teta, b_g, b_r, time);
+            [dist_glob, dist_rel, dist_stm] = compute_neural_distance_single_pair(pattern_1, pattern_2, align_mode,...
+                t_a, t_p, t_g, teta, b_g, b_r, b_0, time);
             
             distance_glob_temp(i_mouse, i_conc_level, id_trial) = dist_glob;
             distance_rel_temp(i_mouse, i_conc_level, id_trial) = dist_rel;
