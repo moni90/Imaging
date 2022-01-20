@@ -1,14 +1,18 @@
-function [dist_glob, dist_rel, dist_stm] = compute_neural_distance_single_pair(odor1, odor2, tau_act, tau_prim, tau_glob, teta, beta_glob, beta_rel, beta_0, tt)
+function [dist_glob, dist_rel, dist_stm] = compute_neural_distance_with_amplitude_single_pair(odor1, odor2, amplitude_1, amplitude_2, align_mode, tau_act, tau_prim, tau_glob, teta, beta_glob, beta_rel, beta_0, tt)
 
+    amplitude_1 = amplitude_1/(nanmax(amplitude_1(:)));
+    amplitude_2 = amplitude_2/(nanmax(amplitude_2(:)));
     
-    f_odor1 = from_discrete_to_waveform(odor1, tau_act, tau_prim, tt);
-    f_odor2 = from_discrete_to_waveform(odor2, tau_act, tau_prim, tt);
+    f_odor1 = from_discrete_to_waveform_with_amplitude(odor1, amplitude_1, tau_act, tau_prim, tt);
+    f_odor2 = from_discrete_to_waveform_with_amplitude(odor2, amplitude_2, tau_act, tau_prim, tt);
     %apply rotation to glomerular id
     f_odor1_rot = apply_rotation(f_odor1, teta);    
     f_odor2_rot = apply_rotation(f_odor2, teta);
     %compute alignment_reference
-    CM_odor1 = compute_CM(f_odor1,tt);
-    CM_odor2 = compute_CM(f_odor2,tt);
+%     CM_odor1 = compute_CM(f_odor1,tt);
+%     CM_odor2 = compute_CM(f_odor2,tt);
+    CM_odor1 = compute_align_ref(f_odor1,tt, align_mode);
+    CM_odor2 = compute_align_ref(f_odor2,tt, align_mode);
     
     dt_CM = (CM_odor1-CM_odor2);
     dist_glob = (1-exp(-abs(dt_CM)/tau_glob));
